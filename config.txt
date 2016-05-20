@@ -1,0 +1,2 @@
+GRCh37 = /Users/munz/root/work/data/genomes/GRCh37/human_g1k_v37.fasta
+GRCh38 = /Users/munz/root/work/data/genomes/GRCh38/GRCh38.fasta

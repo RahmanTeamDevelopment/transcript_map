@@ -3,6 +3,7 @@ import reference
 import sys
 import os
 from optparse import OptionParser
+import datetime
 
 
 #######################################################################################################################
@@ -100,8 +101,6 @@ class Exon(object):
 #######################################################################################################################
 
 
-
-
 # Class representing a single Ensembl transcript
 class RefSeqTranscript(object):
 
@@ -155,35 +154,36 @@ def reverseComplement(seq):
     for base in seq[::-1]: ret += complement[base]
     return ret
 
-
 # Read transcript database
 def readEnsemblData(filename, idkey):
     ret = dict()
+    n_transcripts = 0
     for line in gzip.open(filename,'r'):
         line = line.strip()
         if line=='' or line.startswith('#'): continue
         t = EnsemblTranscript(line)
+        n_transcripts += 1
         if idkey:
             ret[t.ID] = t
         else:
             if t.gene not in ret.keys(): ret[t.gene] = []
             ret[t.gene].append(t)
-    return ret
-
+    return ret, n_transcripts
 
 def readRefSeqData(filename, idkey):
     ret = dict()
+    n_transcripts = 0
     for line in gzip.open(filename,'r'):
         line = line.strip()
         if line=='' or line.startswith('#'): continue
         t = RefSeqTranscript(line)
+        n_transcripts += 1
         if idkey:
             ret[t.ID] = t
         else:
             if t.gene not in ret.keys(): ret[t.gene] = []
             ret[t.gene].append(t)
-    return ret
-
+    return ret, n_transcripts
 
 # Read configuration file
 def readConfigFile(dir):
@@ -199,7 +199,6 @@ def readConfigFile(dir):
         if key == 'GRCh38': ret38 = val
     return ret37, ret38
 
-
 # Read transcript txt file
 def readTXTFile(path):
     for line in open(path[:-3]+'.txt'):
@@ -208,36 +207,44 @@ def readTXTFile(path):
         if line[0] == '#':
             return line[line.find('GRCh3'):line.find('GRCh3')+6], line[line.find('Ensembl release'):]
 
+def readRefSeqInfo(filename):
+    for line in gzip.open(filename,'r'):
+        line = line.strip()
+        return 'RefSeq data (downloaded: '+line[line.find('downloaded:')+12:]+')'
 
 def checkTypeOfDataFile(filename):
     for line in gzip.open(filename,'r'):
         line = line.strip()
         if line=='' or line.startswith('#'): continue
-        if line.startswith('ENST'): return 'ensembl'
-        if line.startswith('NM_'): return 'refseq'
+        if line.startswith('ENST'): return 'Ensembl'
+        if line.startswith('NM_'): return 'RefSeq'
         return None
 
 def checkTypeOfInputFile(filename):
     for line in open(filename):
         line = line.strip()
         if line=='' or line.startswith('#'): continue
-        if line.startswith('ENST'): return 'ensembl'
-        if line.startswith('NM_'): return 'refseq'
+        if line.startswith('ENST'): return 'Ensembl'
+        if line.startswith('NM_'): return 'RefSeq'
         return None
 
 def compare(transcript, comparewith, dataXtype, dataYtype, dataX_build, dataY_build, ref_GRCh37, ref_GRCh38, options, out):
+    ret = False
     for x in comparewith:
         flags = []
-        if dataXtype == 'ensembl' and dataYtype == 'ensembl': flags = compareEnsemblVsEnsembl(transcript, x, dataX_build, dataY_build, ref_GRCh37, ref_GRCh38, options)
-        elif dataXtype == 'ensembl' and dataYtype == 'refseq': flags = compareEnsemblVsRefSeq(transcript, x, dataX_build, dataY_build, dataXtype, options)
-        elif dataXtype == 'refseq' and dataYtype == 'ensembl': flags = compareEnsemblVsRefSeq(x, transcript, dataX_build, dataY_build, dataXtype, options)
+        if dataXtype == 'Ensembl' and dataYtype == 'Ensembl': flags = compareEnsemblVsEnsembl(transcript, x, dataX_build, dataY_build, ref_GRCh37, ref_GRCh38, options)
+        elif dataXtype == 'Ensembl' and dataYtype == 'RefSeq': flags = compareEnsemblVsRefSeq(transcript, x, dataX_build, dataY_build, dataXtype, options)
+        elif dataXtype == 'RefSeq' and dataYtype == 'Ensembl': flags = compareEnsemblVsRefSeq(x, transcript, dataX_build, dataY_build, dataXtype, options)
 
         # Non-discrepant transcripts
         if len(flags) == 0:
+            ret = True
             if not options.discr: flags.append('.')
             else: continue
 
         out.write('\t'.join([transcript.ID, x.ID, ';'.join(flags)])+'\n')
+
+    return ret
 
 def compareEnsemblVsEnsembl(enst_transcript1, enst_transcript2, dataX_build, dataY_build, ref_GRCh37, ref_GRCh38, options):
     flags = []
@@ -288,8 +295,6 @@ def compareEnsemblVsEnsembl(enst_transcript1, enst_transcript2, dataX_build, dat
 
     return flags
 
-
-
 def compareEnsemblVsRefSeq(enst_transcript, refseq_transcript, dataX_build, dataY_build, dataXtype, options):
 
     flags = []
@@ -306,7 +311,7 @@ def compareEnsemblVsRefSeq(enst_transcript, refseq_transcript, dataX_build, data
         discrv = []
         for i in range(len(cds_enst)):
             if not cds_enst[i].seq == cds_refseq[i].seq:
-                if dataXtype == 'ensembl': idx = cds_enst[i].index
+                if dataXtype == 'Ensembl': idx = cds_enst[i].index
                 else: idx = cds_refseq[i].index
                 discrv.append(str(idx))
         if len(discrv) > 0:
@@ -321,7 +326,7 @@ def compareEnsemblVsRefSeq(enst_transcript, refseq_transcript, dataX_build, data
         discrv = []
         for i in range(len(utr5_enst)):
             if not utr5_enst[i].seq == utr5_refseq[i].seq:
-                if dataXtype == 'ensembl': idx = utr5_enst[i].index
+                if dataXtype == 'Ensembl': idx = utr5_enst[i].index
                 else: idx = utr5_refseq[i].index
                 discrv.append(str(idx))
         if len(discrv) > 0:
@@ -336,7 +341,7 @@ def compareEnsemblVsRefSeq(enst_transcript, refseq_transcript, dataX_build, data
         discrv = []
         for i in range(len(utr3_enst)):
             if not utr3_enst[i].seq == utr3_refseq[i].seq:
-                if dataXtype == 'ensembl': idx = utr3_enst[i].index
+                if dataXtype == 'Ensembl': idx = utr3_enst[i].index
                 else: idx = utr3_refseq[i].index
                 discrv.append(str(idx))
         if len(discrv) > 0:
@@ -346,9 +351,10 @@ def compareEnsemblVsRefSeq(enst_transcript, refseq_transcript, dataX_build, data
     return flags
 
 
-
 #######################################################################################################################
 
+# version
+ver = '1.0'
 
 # Directory of enst_map
 dir = os.path.dirname(os.path.realpath(__file__))
@@ -359,7 +365,7 @@ if not len(sys.argv) > 1:
     quit()
 
 # Command line argument parsing
-descr = 'transcript_map'
+descr = 'transcript_map v'+ver
 parser = OptionParser(usage='python path/to/cavatest/transcript_map.py <options>', description=descr)
 parser.add_option('-x', default=None, dest='dataX', action='store', help="Ensembl database file, release 1")
 parser.add_option('-y', default=None, dest='dataY', action='store', help="Ensembl database file, release 2")
@@ -367,9 +373,13 @@ parser.add_option('-i', default=None, dest='input', action='store', help="Input 
 parser.add_option('-o', default=None, dest='output', action='store', help="Output file prefix")
 parser.add_option('-d',  default=False, dest='discr', action='store_true', help="Show only discrepant transcripts")
 parser.add_option('-s',  default=False, dest='simple', action='store_true', help="Simple output")
-
-
 (options, args) = parser.parse_args()
+
+# Welcome message
+print '\n'+'-'*100
+print 'transcript_map v'+ver+' started: '+str(datetime.datetime.now())+'\n'
+
+
 
 # Check if files exist
 '''
@@ -391,19 +401,20 @@ if not os.path.isfile(options.dataY[:-3]+'.txt'):
 '''
 
 
-# Check input file type (i.e. ensembl or refseq)
+# Check input file type (i.e. Ensembl or RefSeq)
 inputtype = checkTypeOfInputFile(options.input)
 
 # Read input file
 inputlist = []
 for line in open(options.input): inputlist.append(line.strip())
+print 'Input list ['+options.input+'] contains '+str(len(inputlist))+' transcripts\n'
 
-# Check database file types (i.e. ensembl or refseq)
+# Check database file types (i.e. Ensembl or RefSeq)
 dataXtype = checkTypeOfDataFile(options.dataX)
 dataYtype = checkTypeOfDataFile(options.dataY)
 
 # Checks
-if dataXtype == 'refseq' and dataYtype == 'refseq':
+if dataXtype == 'RefSeq' and dataYtype == 'RefSeq':
     print 'Error: you cannot compare two RefSeq transcript databases'
     quit()
 if not dataXtype == inputtype:
@@ -411,23 +422,29 @@ if not dataXtype == inputtype:
     quit()
 
 # Read transcript databases
+sys.stdout.write('Dataset X ['+options.dataX+']: READING...')
+sys.stdout.flush()
 dataX_build = dataY_build = ''
-if dataXtype == 'ensembl':
-    dataX = readEnsemblData(options.dataX, True)
+if dataXtype == 'Ensembl':
+    dataX, N = readEnsemblData(options.dataX, True)
     dataX_build, infoX = readTXTFile(options.dataX)
 else:
-    dataX = readRefSeqData(options.dataX, True)
-    infoX = 'RefSeq ...'
+    dataX, N = readRefSeqData(options.dataX, True)
+    infoX = readRefSeqInfo(options.dataX)
+sys.stdout.write('\rDataset X ['+options.dataX+']: '+infoX+', '+str(N)+' transcripts')
+print ''
 
-if dataYtype == 'ensembl':
-    dataY = readEnsemblData(options.dataY, (dataYtype == dataXtype))
+sys.stdout.write('Dataset Y ['+options.dataY+']: READING...')
+sys.stdout.flush()
+if dataYtype == 'Ensembl':
+    dataY, N = readEnsemblData(options.dataY, (dataYtype == dataXtype))
     dataY_build, infoY = readTXTFile(options.dataY)
 else:
-    dataY = readRefSeqData(options.dataY, (dataYtype == dataXtype))
-    infoY = 'RefSeq ...'
+    dataY, N = readRefSeqData(options.dataY, (dataYtype == dataXtype))
+    infoY = readRefSeqInfo(options.dataY)
+sys.stdout.write('\rDataset Y ['+options.dataY+']: '+infoY+', '+str(N)+' transcripts')
+print ''
 
-# Welcome message
-pass
 
 # Read configuration file
 refpath37, refpath38 = readConfigFile(dir)
@@ -461,9 +478,21 @@ out = open(options.output, 'w')
 out.write('# Data set X: '+infoX+'\n')
 out.write('# Data set Y: '+infoY+'\n')
 
+
+print ''
+
+
 n_notfound = 0
 n_discr = 0
+i = 0
 for transcriptID in inputlist:
+
+
+    i+=1
+    sys.stdout.write('\rAnalysing transcripts '+str(i)+'/'+str(len(inputlist)))
+    sys.stdout.flush()
+
+
     flags = []
 
     comparewith = []
@@ -485,12 +514,18 @@ for transcriptID in inputlist:
         out.write('\t'.join([transcriptID, '.' , ';'.join(flags)]) + '\n')
         continue
 
-    compare(transcript, comparewith, dataXtype, dataYtype, dataX_build, dataY_build, ref_GRCh37, ref_GRCh38, options, out)
+    identical = compare(transcript, comparewith, dataXtype, dataYtype, dataX_build, dataY_build, ref_GRCh37, ref_GRCh38, options, out)
+    if not identical: n_discr+=1
 
-
+print ' - Done.'
 
 # Close output file
 out.close()
 
 # Goodbye message
-print '='*100+'\n'
+print '\nSummary:'
+print '- '+str(n_notfound)+' transcripts not present in at least one dataset'
+print '- '+str(n_discr)+' transcripts have no identical match'
+print '\nOutput written to file: '+options.output
+print '\nFinished: '+str(datetime.datetime.now())
+print '-'*100+'\n'

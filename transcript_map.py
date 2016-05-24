@@ -383,7 +383,7 @@ parser = OptionParser(usage='python path/to/transcript_map/transcript_map.py <op
 parser.add_option('-x', default=None, dest='dataX', action='store', help="Ensembl database file, release 1")
 parser.add_option('-y', default=None, dest='dataY', action='store', help="Ensembl database file, release 2")
 parser.add_option('-i', default=None, dest='input', action='store', help="Input file containing ENST IDs of interest")
-parser.add_option('-o', default=None, dest='output', action='store', help="Output file prefix")
+parser.add_option('-o', default='output.txt', dest='output', action='store', help="Output file name")
 parser.add_option('-d',  default=False, dest='discr', action='store_true', help="Show only discrepant transcripts")
 parser.add_option('-s',  default=False, dest='simple', action='store_true', help="Simple output")
 (options, args) = parser.parse_args()

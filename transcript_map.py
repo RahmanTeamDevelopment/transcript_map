@@ -238,20 +238,24 @@ def checkTypeOfInputFile(filename):
 
 # Compare query transcript with a set of transcripts
 def compare(transcript, comparewith, dataXtype, dataYtype, dataX_build, dataY_build, ref_GRCh37, ref_GRCh38, options, out):
-    ret = False
+    identical = False
+    cds_identical = False
     for x in comparewith:
         flags = []
         if dataXtype == 'Ensembl' and dataYtype == 'Ensembl': flags = compareEnsemblVsEnsembl(transcript, x, dataX_build, dataY_build, ref_GRCh37, ref_GRCh38, options)
         elif dataXtype == 'Ensembl' and dataYtype == 'RefSeq': flags = compareEnsemblVsRefSeq(transcript, x, dataX_build, dataY_build, dataXtype, options)
         elif dataXtype == 'RefSeq' and dataYtype == 'Ensembl': flags = compareEnsemblVsRefSeq(x, transcript, dataX_build, dataY_build, dataXtype, options)
 
+        if all([('CDS' not in flag) for flag in flags]): cds_identical = True
+
         if len(flags) == 0:
-            ret = True
+            identical = True
             if not options.discr: flags.append('.')
             else: continue
+
         out.write('\t'.join([transcript.ID, x.ID, ';'.join(flags)])+'\n')
 
-    return ret
+    return identical, cds_identical
 
 # Compare two Ensembl transcripts
 def compareEnsemblVsEnsembl(enst_transcript1, enst_transcript2, dataX_build, dataY_build, ref_GRCh37, ref_GRCh38, options):
@@ -479,8 +483,9 @@ out.write('# Data set X: '+infoX+'\n')
 out.write('# Data set Y: '+infoY+'\n')
 
 # Iterate through the input list of transcripts
-n_notfound = 0
-n_discr = 0
+n_inboth = 0
+n_identical = 0
+n_cds_identical = 0
 i = 0
 for transcriptID in inputlist:
     i+=1
@@ -501,12 +506,15 @@ for transcriptID in inputlist:
         else: comparewith = dataY[transcript.gene]
 
     if len(flags) > 0:
-        n_notfound += 1
-        out.write('\t'.join([transcriptID, '.' , ';'.join(flags)]) + '\n')
+        out.write('\t'.join([transcriptID, '.', ';'.join(flags)]) + '\n')
         continue
 
-    identical = compare(transcript, comparewith, dataXtype, dataYtype, dataX_build, dataY_build, ref_GRCh37, ref_GRCh38, options, out)
-    if not identical: n_discr+=1
+    n_inboth += 1
+
+    identical, cds_identical = compare(transcript, comparewith, dataXtype, dataYtype, dataX_build, dataY_build, ref_GRCh37, ref_GRCh38, options, out)
+    if identical: n_identical += 1
+    if cds_identical: n_cds_identical += 1
+
 print ' - Done.'
 
 # Close output file
@@ -514,8 +522,9 @@ out.close()
 
 # Goodbye message
 print '\nSummary:'
-print '- '+str(n_notfound)+' transcripts not present in at least one dataset'
-print '- '+str(n_discr)+' transcripts have no identical match'
+print '- '+str(n_inboth) + ' transcripts present in both datasets'
+print '- '+str(n_identical)+' transcripts have identical match'
+print '- '+str(n_cds_identical)+' transcripts have CDS-identical match'
 print '\nOutput written to file: '+options.output
 print '\nFinished: '+str(datetime.datetime.now())
 print '-'*100+'\n'

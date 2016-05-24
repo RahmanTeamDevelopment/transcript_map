@@ -136,12 +136,12 @@ class RefSeqTranscript(object):
                 cds_seqs.append(ExonSequence(i, self.seq[start-1:end]))
 
             if not int(exon[0]) > cds_start:
-                if cds_start < int(exon[1]): end = cds_start
+                if cds_start < int(exon[1]): end = cds_start-1
                 else: end = int(exon[1])
                 utr5_seqs.append(ExonSequence(i, self.seq[int(exon[0])-1:end]))
 
             if not int(exon[1]) < cds_end:
-                if cds_end > int(exon[0]) : start = cds_end
+                if cds_end > int(exon[0]): start = cds_end+1
                 else: start = int(exon[0])
                 utr3_seqs.append(ExonSequence(i, self.seq[start-1:int(exon[1])]))
 

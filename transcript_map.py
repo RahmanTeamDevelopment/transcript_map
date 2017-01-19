@@ -371,7 +371,7 @@ def compareEnsemblVsRefSeq(enst_transcript, refseq_transcript, dataX_build, data
 
 
 # Version
-ver = '1.0'
+ver = '1.1'
 
 # Directory of transcript_map
 dir = os.path.dirname(os.path.realpath(__file__))

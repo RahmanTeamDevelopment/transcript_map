@@ -26,17 +26,17 @@ class EnsemblTranscript(object):
         cols = line.split('\t')
         self.ID = cols[0]
         self.gene = cols[1]
-        self.geneID = cols[2]
-        self.chrom = cols[4]
-        self.strand = int(cols[5])
-        self.transcriptStart = int(cols[6])
-        self.transcriptEnd = int(cols[7])
-        self.codingStart = int(cols[8])
-        self.codingStartGenomic = int(cols[9])
-        self.codingEndGenomic = int(cols[10])
+        self.geneID = cols[3]
+        self.chrom = cols[5]
+        self.strand = int(cols[6])
+        self.transcriptStart = int(cols[7])
+        self.transcriptEnd = int(cols[8])
+        self.codingStart = int(cols[9])
+        self.codingStartGenomic = int(cols[10])
+        self.codingEndGenomic = int(cols[11])
         # Initializing and adding exons
-        for i in range(1, len(cols) - 11, 2):
-            self.exons.append(EnsemblExon(int((i + 1) / 2), int(cols[10 + i]), int(cols[11 + i])))
+        for i in range(1, len(cols) - 12, 2):
+            self.exons.append(EnsemblExon(int((i + 1) / 2), int(cols[11 + i]), int(cols[12 + i])))
 
     # Return CDS, UTR5 and UTR3 dictionaries (keys: exon index, value: sequence)
     def getSeqs(self, ref):

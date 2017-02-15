@@ -288,7 +288,12 @@ def compareEnsemblVsEnsembl(enst_transcript1, enst_transcript2, dataX_build, dat
         discrv = []
         for i in range(len(utr5_1)):
             if not utr5_1[i].seq == utr5_2[i].seq:
-                discrv.append(str(utr5_1[i].index))
+                if i == 0:
+                    N = min(len(utr5_1[0].seq),len(utr5_2[0].seq))
+                    if utr5_1[0].seq[-N:] == utr5_2[0].seq[-N:]: discrv.append('END')
+                    else: discrv.append(str(utr5_1[0].index))
+                else:
+                    discrv.append(str(utr5_1[i].index))
         if len(discrv) > 0:
             if options.simple: flags.append('UTR5')
             else: flags.append('UTR5:'+','.join(discrv))
@@ -301,7 +306,12 @@ def compareEnsemblVsEnsembl(enst_transcript1, enst_transcript2, dataX_build, dat
         discrv = []
         for i in range(len(utr3_1)):
             if not utr3_1[i].seq == utr3_2[i].seq:
-                discrv.append(str(utr3_1[i].index))
+                if i == len(utr3_1)-1:
+                    N = min(len(utr3_1[i].seq), len(utr3_2[i].seq))
+                    if utr3_1[i].seq[:N] == utr3_2[i].seq[:N]: discrv.append('END')
+                    else: discrv.append(str(utr3_1[i].index))
+                else:
+                    discrv.append(str(utr3_1[i].index))
         if len(discrv) > 0:
             if options.simple: flags.append('UTR3')
             else: flags.append('UTR3:'+','.join(discrv))
@@ -344,7 +354,13 @@ def compareEnsemblVsRefSeq(enst_transcript, refseq_transcript, dataX_build, data
             if not utr5_enst[i].seq == utr5_refseq[i].seq:
                 if dataXtype == 'Ensembl': idx = utr5_enst[i].index
                 else: idx = utr5_refseq[i].index
-                discrv.append(str(idx))
+                if i == 0:
+                    N = min(len(utr5_enst[0].seq),len(utr5_refseq[0].seq))
+                    if utr5_enst[0].seq[-N:] == utr5_refseq[0].seq[-N:]: discrv.append('END')
+                    else: discrv.append(str(idx))
+                else:
+                    discrv.append(str(idx))
+
         if len(discrv) > 0:
             if options.simple: flags.append('UTR5')
             else: flags.append('UTR5:'+','.join(discrv))
@@ -359,7 +375,14 @@ def compareEnsemblVsRefSeq(enst_transcript, refseq_transcript, dataX_build, data
             if not utr3_enst[i].seq == utr3_refseq[i].seq:
                 if dataXtype == 'Ensembl': idx = utr3_enst[i].index
                 else: idx = utr3_refseq[i].index
-                discrv.append(str(idx))
+
+                if i == len(utr3_enst)-1:
+                    N = min(len(utr3_enst[i].seq), len(utr3_refseq[i].seq))
+                    if utr3_enst[i].seq[:N] == utr3_refseq[i].seq[:N]: discrv.append('END')
+                    else: discrv.append(str(idx))
+                else:
+                    discrv.append(str(idx))
+
         if len(discrv) > 0:
             if options.simple: flags.append('UTR3')
             else: flags.append('UTR3:'+','.join(discrv))
